@@ -102,12 +102,12 @@ class NNGraph():
         out.draw(filename + '.png')
         return im.open(filename + '.png')
 
-    # def render_pyvis_graph(self):
-    #     g = Network(height='400px', width='50%',heading='')
-    #     g.from_nx(self.graph)
-    #     g.show_buttons(filter_=['physics'])
-    #     g.show('neural_network.html')
-    #     display(HTML('neural_network.html'))
+    def render_pyvis_graph(self):
+        g = Network(height='400px', width='50%',heading='')
+        g.from_nx(self.graph)
+        g.show_buttons(filter_=['physics'])
+        g.show('neural_network.html')
+        display(HTML('neural_network.html'))
 
     def get_partial_models(self):
         """
@@ -236,18 +236,10 @@ class NNGraph():
     def train(self, x, y, epochs, epoch_freq):
         n = len(x)
         e = 0
+        self.animate_predictions(x, e)
         while e < epochs:
+            e += epoch_freq
             self.model.fit(x, y, batch_size=n, epochs=epoch_freq, verbose=0)
             self.partial_models = self.get_partial_models()
             self.animate_predictions(x, e)
-            e += epoch_freq
             print(f'first {e} epochs done')
-        self.partial_models = self.get_partial_models()
-        self.animate_predictions(x, e)
-
-        # for epoch in range(epochs):
-        #     self.model.fit(x, y, batch_size=n, epochs=1, verbose=0)
-        #     if epoch % epoch_freq == 0:
-        #         self.partial_models = self.get_partial_models()
-        #         self.animate_predictions(x, epoch)
-        #     print(f'epoch {epoch} done')
