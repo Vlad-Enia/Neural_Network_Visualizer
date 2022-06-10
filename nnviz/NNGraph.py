@@ -2,7 +2,7 @@ import shutil
 import os
 from PIL import Image as im
 from networkx.drawing.nx_agraph import to_agraph
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras import Sequential
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.optimizers import SGD
@@ -11,16 +11,14 @@ import pygraphviz
 from pyvis.network import Network
 from IPython.core.display import display, HTML
 from pprint import pprint
+import keract
 
-
-# TODO: rezolva problema cu pygraphviz/graphviz etc
 
 class NNGraph():
     def __init__(self, model_params, model_nb):
         self.model = self.create_model(model_params)
         self.graph = self.create_graph(self.model)
         self.graph_init = self.graph.copy()
-        self.partial_models = self.get_partial_models()
         self.model_nb = model_nb
         if os.path.isdir(f'./model_{model_nb}_predictions'):
             shutil.rmtree(f'./model_{model_nb}_predictions')
@@ -33,15 +31,19 @@ class NNGraph():
         :return: a compiled keras model, with loss function mean squared error, and optimizer SGD
         """
         model = Sequential()
+
         model.add(Dense(model_params['hidden_size'], activation=model_params['hidden_act'], input_shape=(model_params['input_size'],)))
         model.add(Dense(model_params['output_size'], activation=model_params['output_act']))
-        model.compile(loss=model_params['loss'], optimizer=model_params['optimizer'])
+        model.compile(
+            loss=model_params['loss'],
+            optimizer=model_params['optimizer']
+        )
         return model
 
     def create_graph(self, model):
         """
         This function creates networkx digraph, representing a compiled neural network keras model given as parameter.
-        :param model: compiled keras sequential neural network moedel
+        :param model: compiled keras sequential neural network model
         :return: networkx digraph resembling the model
         """
         graph = DiGraph()
@@ -111,6 +113,7 @@ class NNGraph():
 
     def get_partial_models(self):
         """
+        DEPRECATED
         Creates a list of partial models of the self.model.
         A partial model contains all the layers of a model (with matching weights and activations) up to a specified layer depth.
         These partial models are used for animating neuron activations.
@@ -119,7 +122,6 @@ class NNGraph():
         - one containing the input and the hidden layer.
         :return: a list containing all the partial model of the self.model
         """
-
         part_models = []
         for i in range(len(self.model.layers)):
             part_model = Sequential()
@@ -156,11 +158,7 @@ class NNGraph():
         :param epoch: number of training epochs that took place before calling this method
         """
         graph_images = []
-        predictions = [x]
-
-        for i in range(len(self.partial_models)):
-            predictions.append(self.partial_models[i].predict(x))
-        predictions.append(self.model.predict(x))
+        predictions = keract.get_activations(self.model, x, output_format='numbered')
 
         dir_path = f'./model_{self.model_nb}_predictions/epoch_{epoch}'
         if os.path.isdir(dir_path):
@@ -194,7 +192,6 @@ class NNGraph():
                             }})
 
                 graph_images.append(self.render_graph(self.graph, f'{dir_path}/{k}_act_{i}_{l}'))
-                # self.reset_graph()
                 k += 1
 
                 weights = self.model.layers[l].get_weights()[0]     # [0] for only the weights
@@ -240,6 +237,5 @@ class NNGraph():
         while e < epochs:
             e += epoch_freq
             self.model.fit(x, y, batch_size=n, epochs=epoch_freq, verbose=0)
-            self.partial_models = self.get_partial_models()
             self.animate_predictions(x, e)
             print(f'first {e} epochs done')
